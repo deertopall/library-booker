@@ -2,14 +2,17 @@ name: Library booking
 
 on:
   schedule:
-    # 21:45 UTC = 22:45 Rome in winter, 23:45 Rome in summer.
-    # GitHub's scheduler can start late, so the job starts early and the
-    # script itself sleeps until exactly midnight Rome time.
-    - cron: "45 21 * * *"
+    # Three chances per night, because GitHub sometimes delays or drops
+    # scheduled runs. In winter these are 22:05, 22:35 and 23:05 Rome time
+    # (an hour later in summer). Each run sleeps until exactly 00:00 Rome.
+    # Only one of them books: see "Skip if already handled tonight".
+    - cron: "5 21 * * *"
+    - cron: "35 21 * * *"
+    - cron: "5 22 * * *"
   workflow_dispatch:
     inputs:
       date:
-        description: "Target date YYYY-MM-DD for a manual dry run (leave empty for normal run)"
+        description: "Target date YYYY-MM-DD (leave empty for normal run)"
         required: false
       start:
         description: "Start time HH:MM (optional, for tests)"
@@ -22,13 +25,35 @@ on:
         type: boolean
         default: true
 
+# Runs queue up instead of overlapping.
+concurrency:
+  group: library-booking
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   book:
     runs-on: ubuntu-latest
-    timeout-minutes: 150
+    timeout-minutes: 240
     steps:
+      - name: Skip if already handled tonight
+        id: guard
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '-5 hours' +%Y-%m-%dT%H:%M:%SZ)
+          n=$(gh api "repos/${{ github.repository }}/actions/workflows/book.yml/runs?event=schedule&per_page=20" \
+              --jq "[.workflow_runs[] | select(.id < ${{ github.run_id }}) | select(.run_started_at >= \"$since\") | select(.conclusion != \"cancelled\" and .conclusion != \"skipped\")] | length")
+          echo "other scheduled runs tonight: $n"
+          if [ "$n" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
       - name: Run booker
+        if: steps.guard.outputs.skip != 'true'
         env:
           LB_EMAIL: ${{ secrets.LB_EMAIL }}
           LB_MATRICOLA: ${{ secrets.LB_MATRICOLA }}
