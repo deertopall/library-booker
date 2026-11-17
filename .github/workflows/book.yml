@@ -1,4 +1,6 @@
 name: Library booking
+# Normal nightly runs are titled "nightly"; manual test runs show their date.
+run-name: ${{ inputs.date && format('test {0}', inputs.date) || 'nightly' }}
 
 on:
   schedule:
@@ -6,6 +8,8 @@ on:
     # scheduled runs. In winter these are 22:05, 22:35 and 23:05 Rome time
     # (an hour later in summer). Each run sleeps until exactly 00:00 Rome.
     # Only one of them books: see "Skip if already handled tonight".
+    # An outside timer (cron-job.org) also starts a run at 23:50 through the
+    # API with {"ref":"main","inputs":{"dry_run":"false"}}; it is guarded too.
     - cron: "5 21 * * *"
     - cron: "35 21 * * *"
     - cron: "5 22 * * *"
@@ -41,14 +45,14 @@ jobs:
     steps:
       - name: Skip if already handled tonight
         id: guard
-        if: github.event_name == 'schedule'
+        if: inputs.date == '' || inputs.date == null
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           since=$(date -u -d '-5 hours' +%Y-%m-%dT%H:%M:%SZ)
-          n=$(gh api "repos/${{ github.repository }}/actions/workflows/book.yml/runs?event=schedule&per_page=20" \
-              --jq "[.workflow_runs[] | select(.id < ${{ github.run_id }}) | select(.run_started_at >= \"$since\") | select(.conclusion != \"cancelled\" and .conclusion != \"skipped\")] | length")
-          echo "other scheduled runs tonight: $n"
+          n=$(gh api "repos/${{ github.repository }}/actions/workflows/book.yml/runs?per_page=30" \
+              --jq "[.workflow_runs[] | select(.display_title == \"nightly\") | select(.id < ${{ github.run_id }}) | select(.run_started_at >= \"$since\") | select(.conclusion != \"cancelled\" and .conclusion != \"skipped\")] | length")
+          echo "earlier nightly runs tonight: $n"
           if [ "$n" -gt 0 ]; then echo "skip=true" >> "$GITHUB_OUTPUT"; else echo "skip=false" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
         if: steps.guard.outputs.skip != 'true'
