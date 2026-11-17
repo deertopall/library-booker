@@ -39,8 +39,8 @@ API = "https://reservation.affluences.com/api"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36")
 
-START_MIN = 9 * 60          # hold a seat from 09:00
-SPLIT_MIN = 12 * 60         # morning block ends at 12:00
+START_MIN = 10 * 60         # hold a seat from 10:00
+SPLIT_MIN = 13 * 60         # morning block ends at 13:00
 MAX_BLOCK = 240             # platform max per booking (minutes)
 OPEN_WAIT_SECONDS = 180     # how long to keep polling after midnight
 
