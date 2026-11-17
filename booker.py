@@ -233,7 +233,7 @@ def load_device_token(raw, email):
 # --- notifications -----------------------------------------------------
 def notify(msg, title="Library booking", priority="default"):
     print(f"[notify] {title}: {msg}")
-    topic = os.environ.get("LB_NTFY_TOPIC")
+    topic = (os.environ.get("LB_NTFY_TOPIC") or "").strip()
     if not topic:
         return
     try:
@@ -302,8 +302,8 @@ def run(args):
         print(f"{target} is a weekend: nothing to book")
         return 0
 
-    email = os.environ.get("LB_EMAIL", "")
-    matricola = os.environ.get("LB_MATRICOLA", "")
+    email = os.environ.get("LB_EMAIL", "").strip()
+    matricola = os.environ.get("LB_MATRICOLA", "").strip()
     if not (email and matricola):
         print("LB_EMAIL and LB_MATRICOLA must be set", file=sys.stderr)
         return 2
