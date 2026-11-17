@@ -26,7 +26,6 @@ import argparse
 import datetime as dt
 import json
 import os
-import random
 import re
 import sys
 import time
@@ -88,10 +87,8 @@ def rank_seat(lib, n):
 
 
 def primary_library(target):
-    """Sala Rossa 4 weekdays a week, Polo on 1 random weekday (same for the whole ISO week)."""
-    y, w, _ = target.isocalendar()
-    polo_day = random.Random(f"{y}-{w}").sample(range(5), 1)
-    return "polo" if target.weekday() in polo_day else "rossa"
+    """Policlinico Sala Rossa every weekday (other libraries are only fallbacks)."""
+    return "rossa"
 
 
 # --- http --------------------------------------------------------------
