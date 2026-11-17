@@ -152,8 +152,10 @@ def day_end(seats):
     return max(ends) if ends else None
 
 
-def free_run(seat, start_min=START_MIN):
-    """(start, end) of the contiguous free run starting at the first free slot >= 09:00."""
+def free_run(seat, start_min=None):
+    """(start, end) of the contiguous free run starting at the first free slot >= START_MIN."""
+    if start_min is None:
+        start_min = START_MIN
     free = {m: g for (m, ok, g) in seat["slots"] if ok}
     starts = sorted(m for m in free if m >= start_min)
     if not starts:
@@ -173,6 +175,7 @@ def rank_candidates(lib, seats, end):
         if rk is None or run is None:
             continue
         s, e = run
+        e = min(e, end)
         full = (e == end)
         tier = 0 if (full and s <= START_MIN) else (1 if full else 2)
         key = (tier, s if tier == 1 else 0, -(e - s) if tier == 2 else 0, rk)
@@ -330,6 +333,9 @@ def run(args):
     else:
         seats = wait_for_open(primary, target.isoformat(), fixture)
     end = day_end(seats)
+    if args.end:
+        h, m = args.end.split(":")
+        end = min(end, int(h) * 60 + int(m)) if end else None
     cands = rank_candidates(primary, seats, end)
     choice = None                                   # (lib, key, seat, s, e, full)
     if cands and cands[0][4]:
@@ -342,11 +348,15 @@ def run(args):
             except Exception as ex:
                 print(f"  could not check {lib}: {ex}")
                 continue
-            oc = rank_candidates(lib, other, day_end(other))
+            oend = day_end(other)
+            if args.end and oend:
+                h, m = args.end.split(":")
+                oend = min(oend, int(h) * 60 + int(m))
+            oc = rank_candidates(lib, other, oend)
             if oc and oc[0][4]:
                 k, seat, s, e, full = oc[0]
                 choice = (lib, seat, s, e, full)
-                end = day_end(other)
+                end = oend
                 break
         if choice is None and cands:
             k, seat, s, e, full = cands[0]
@@ -409,7 +419,12 @@ if __name__ == "__main__":
     ap.add_argument("--fixture", help="JSON file of {lib: availability list} for offline tests")
     ap.add_argument("--no-wait", action="store_true", help="don't wait for midnight / window opening")
     ap.add_argument("--env-file", default="~/.library-booker.env")
+    ap.add_argument("--start", help="override start time HH:MM (for tests)")
+    ap.add_argument("--end", help="override end time HH:MM (for tests)")
     a = ap.parse_args()
+    if a.start:
+        h, m = a.start.split(":")
+        START_MIN = int(h) * 60 + int(m)
     if os.path.exists(os.path.expanduser(a.env_file)):
         load_env_file(a.env_file)
     sys.exit(run(a))
