@@ -1,0 +1,37 @@
+name: Library booking
+
+on:
+  schedule:
+    # 21:45 UTC = 22:45 Rome in winter, 23:45 Rome in summer.
+    # GitHub's scheduler can start late, so the job starts early and the
+    # script itself sleeps until exactly midnight Rome time.
+    - cron: "45 21 * * *"
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Target date YYYY-MM-DD for a manual dry run (leave empty for normal run)"
+        required: false
+      dry_run:
+        description: "Dry run (never books)"
+        type: boolean
+        default: true
+
+jobs:
+  book:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run booker
+        env:
+          LB_EMAIL: ${{ secrets.LB_EMAIL }}
+          LB_MATRICOLA: ${{ secrets.LB_MATRICOLA }}
+          LB_DEVICE_TOKEN: ${{ secrets.LB_DEVICE_TOKEN }}
+          LB_NTFY_TOPIC: ${{ secrets.LB_NTFY_TOPIC }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            [ -n "${{ inputs.date }}" ] && ARGS="$ARGS --date ${{ inputs.date }} --no-wait"
+            [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+          fi
+          python3 booker.py $ARGS
