@@ -69,6 +69,7 @@ jobs:
             [ -n "${{ inputs.date }}" ] && ARGS="$ARGS --date ${{ inputs.date }} --no-wait"
             [ -n "${{ inputs.start }}" ] && ARGS="$ARGS --start ${{ inputs.start }}"
             [ -n "${{ inputs.end }}" ] && ARGS="$ARGS --end ${{ inputs.end }}"
-            [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run"
+            # dry runs are tests: never sit waiting for midnight
+            [ "${{ inputs.dry_run }}" = "true" ] && ARGS="$ARGS --dry-run --no-wait"
           fi
           python3 booker.py $ARGS
