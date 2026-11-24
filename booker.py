@@ -377,6 +377,11 @@ def run(args):
         ok, detail, tok = reserve(seat["id"], target.isoformat(), a, b, cfg, dry)
         print(f"  {hhmm(a)}-{hhmm(b)}: {'OK' if ok else 'FAILED'} {detail}")
         (results if ok else failed).append((a, b, detail, tok))
+        if "already_have_reservation" in detail:
+            print("  Affluences says a booking already exists for this time: stopping, nothing changed")
+            failed.pop()
+            notify(f"{target}: you already have a booking for {hhmm(a)}-{hhmm(b)}, so nothing new was booked.")
+            return 0
         if not ok and not dry and not detail.startswith("HTTP 0"):
             # try another seat in the same library that is free for exactly this block
             alt_seats = fetch_seats(lib, target.isoformat(), fixture)
